@@ -2,8 +2,8 @@
 transcribe_segments.py — Step 4 of the AlbanianDataFactory pipeline.
 
 For every segment in audio_segments_manifest.csv that does not yet have a
-raw_transcript (or --force is given), run Albanian ASR (Whisper via
-Hugging Face transformers or faster-whisper) and write results to
+raw_transcript (or --force is given), run an Albanian fine-tuned ASR model
+via the Hugging Face `transformers` pipeline and write results to
 manifests/audio_text_pairs.csv.
 
 Usage:
@@ -11,7 +11,13 @@ Usage:
 
 Options:
     --force              Re-transcribe segments that already have a transcript.
-    --model MODEL_NAME   Override the model name from config.
+    --model MODEL_NAME   Override the model name from config (must be a HuggingFace
+                         model ID of an Albanian fine-tuned ASR model).
+
+Recommended Albanian fine-tuned models (set in config/config.yaml or --model):
+    primusAI/whisper-large-v3-albanian   — highest accuracy (~4 GB VRAM)
+    ard-ali/whisper-medium-albanian      — balanced speed/accuracy
+    ard-ali/whisper-small-albanian       — lightweight
 
 Schema of audio_text_pairs.csv:
     pair_id, segment_id, segment_path,
@@ -42,56 +48,30 @@ from utils import (
 
 
 # ---------------------------------------------------------------------------
-# ASR back-ends
+# ASR back-end — Hugging Face transformers (Albanian fine-tuned models)
 # ---------------------------------------------------------------------------
 
-def _transcribe_with_transformers(segment_path: Path, model_name: str, device: str) -> str:
+def transcribe_segment(segment_path: Path, model_name: str, device: str) -> str:
     """
-    Transcribe *segment_path* using the Hugging Face transformers pipeline
-    with language forced to Albanian (sq).
+    Transcribe *segment_path* using a Hugging Face Albanian fine-tuned ASR model.
+
+    Albanian fine-tuned Whisper models are loaded via the
+    ``transformers`` ``automatic-speech-recognition`` pipeline.  The language
+    hint ``sq`` is passed as a generation argument so that multilingual
+    checkpoints stay anchored to Albanian; it is silently ignored by
+    language-specific fine-tunes.
     """
     from transformers import pipeline as hf_pipeline
 
+    device_id = 0 if device == "cuda" else -1
     pipe = hf_pipeline(
         "automatic-speech-recognition",
         model=model_name,
-        device=0 if device == "cuda" else -1,
+        device=device_id,
         generate_kwargs={"language": "sq", "task": "transcribe"},
     )
     result = pipe(str(segment_path))
     return result["text"].strip()
-
-
-def _transcribe_with_faster_whisper(
-    segment_path: Path, model_name: str, device: str
-) -> str:
-    """
-    Transcribe using faster-whisper (CTranslate2 backend).
-    Model name should be a faster-whisper compatible name such as
-    'tiny', 'base', 'small', etc.
-    """
-    from faster_whisper import WhisperModel
-
-    model = WhisperModel(model_name, device=device, compute_type="int8")
-    segments, _ = model.transcribe(str(segment_path), language="sq")
-    return " ".join(seg.text for seg in segments).strip()
-
-
-def transcribe_segment(segment_path: Path, model_name: str, device: str) -> str:
-    """
-    Transcribe *segment_path* with the best available back-end.
-
-    Preference order:
-      1. faster-whisper   (if installed)
-      2. transformers     (Hugging Face pipeline)
-    """
-    try:
-        import faster_whisper  # noqa: F401
-        return _transcribe_with_faster_whisper(segment_path, model_name, device)
-    except ImportError:
-        pass
-
-    return _transcribe_with_transformers(segment_path, model_name, device)
 
 
 # ---------------------------------------------------------------------------
@@ -100,7 +80,7 @@ def transcribe_segment(segment_path: Path, model_name: str, device: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Transcribe audio segments with Albanian ASR."
+        description="Transcribe audio segments with an Albanian fine-tuned ASR model."
     )
     parser.add_argument(
         "--force",
@@ -110,7 +90,7 @@ def main() -> None:
     parser.add_argument(
         "--model",
         default=None,
-        help="Override model name from config.",
+        help="Override model name from config (HuggingFace model ID).",
     )
     args = parser.parse_args()
 
@@ -151,7 +131,7 @@ def main() -> None:
         return
 
     logger.info(
-        "Transcribing %d segment(s) with model '%s' on %s…",
+        "Transcribing %d segment(s) with Albanian fine-tuned model '%s' on %s…",
         total,
         model_name,
         device,
@@ -215,3 +195,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

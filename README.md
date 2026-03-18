@@ -37,7 +37,7 @@ AlbanianDataFactory/
 │   ├── extract_audio.py          ← Step 1: media → WAV
 │   ├── clean_audio.py            ← Step 2: WAV → clean WAV
 │   ├── segment_audio.py          ← Step 3: clean WAV → speech chunks (Silero VAD)
-│   ├── transcribe_segments.py    ← Step 4: chunks → transcripts (Whisper sq)
+│   ├── transcribe_segments.py    ← Step 4: chunks → transcripts (Albanian fine-tuned ASR)
 │   └── build_text_dataset.py     ← Step 5: text → chunks → manifest
 └── notebooks/                    ← exploratory notebooks
 ```
@@ -136,7 +136,7 @@ Skip logic: source is skipped if its segment folder already contains WAV files.
 
 ### Step 4 — `transcribe_segments.py`
 
-For each segment in `audio_segments_manifest.csv` without a `raw_transcript`, runs Albanian ASR (language code `sq`) and writes results to **`manifests/audio_text_pairs.csv`**:
+For each segment in `audio_segments_manifest.csv` without a `raw_transcript`, runs an **Albanian fine-tuned ASR model** via the Hugging Face `transformers` pipeline and writes results to **`manifests/audio_text_pairs.csv`**:
 
 | Column | Description |
 |--------|-------------|
@@ -152,8 +152,15 @@ For each segment in `audio_segments_manifest.csv` without a `raw_transcript`, ru
 | `model_name` | ASR model used |
 | `created_at` | ISO 8601 timestamp |
 
-ASR backend preference: **faster-whisper** (if installed) → **Hugging Face transformers pipeline**.  
-Override model with `--model MODEL_NAME`.
+Albanian fine-tuned models (set in `config/config.yaml` or via `--model`):
+
+| Model | Size | Notes |
+|-------|------|-------|
+| `primusAI/whisper-large-v3-albanian` | large | Highest accuracy; ~4 GB VRAM |
+| `ard-ali/whisper-medium-albanian` | medium | Good balance of speed and accuracy |
+| `ard-ali/whisper-small-albanian` | small | Lightweight; lower accuracy |
+
+Override model at runtime with `--model MODEL_NAME`.
 
 Skip logic: segments with an existing `raw_transcript` are skipped unless `--force`.
 
@@ -189,7 +196,8 @@ segmentation:
   vad_threshold: 0.5
 
 transcription:
-  model_name: "openai/whisper-base"
+  model_name: "primusAI/whisper-large-v3-albanian"
+  # Alternatives: ard-ali/whisper-medium-albanian | ard-ali/whisper-small-albanian
   language: "sq"
   device: "cpu"   # or "cuda"
 

@@ -12,10 +12,9 @@ torchaudio>=2.0
 
 # Silero VAD (loaded via torch.hub — no extra pip package needed)
 # But we need a version of torch that supports hub
-# Optionally install faster-whisper for faster ASR:
-# faster-whisper>=0.10
 
-# Hugging Face Transformers for ASR (transcribe_segments.py fallback)
+# Hugging Face Transformers — sole ASR backend for Albanian fine-tuned models
+# (transcribe_segments.py uses the transformers pipeline exclusively)
 transformers>=4.35
 accelerate>=0.24
 

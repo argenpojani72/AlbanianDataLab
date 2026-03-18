@@ -34,11 +34,18 @@ AlbanianDataFactory/
 ├── logs/                         ← one log file per script
 ├── scripts/
 │   ├── utils.py                  ← shared helpers (stable_id, upsert_manifest, …)
+│   ├── run_pipeline.py           ← end-to-end runner (all steps in one command)
 │   ├── extract_audio.py          ← Step 1: media → WAV
 │   ├── clean_audio.py            ← Step 2: WAV → clean WAV
 │   ├── segment_audio.py          ← Step 3: clean WAV → speech chunks (Silero VAD)
 │   ├── transcribe_segments.py    ← Step 4: chunks → transcripts (Albanian fine-tuned ASR)
-│   └── build_text_dataset.py     ← Step 5: text → chunks → manifest
+│   ├── build_text_dataset.py     ← Step 5: text → chunks → manifest
+│   └── export_dataset.py         ← Step 6: manifests → training-ready JSONL
+├── tests/
+│   ├── test_utils.py             ← unit tests for utils.py
+│   ├── test_text_processing.py   ← unit tests for text clean/chunk logic
+│   └── test_segment_logic.py     ← unit tests for VAD merge/split logic
+├── exports/                      ← JSONL training files (export_dataset.py output)
 └── notebooks/                    ← exploratory notebooks
 ```
 
@@ -75,6 +82,27 @@ Supported audio/video formats: `.mp4 .mkv .webm .avi .mov .flv .mp3 .m4a .aac .o
 Supported text formats: `.txt .html .htm .json .csv .pdf .epub`
 
 ### 4. Run the pipeline
+
+**Option A — single command (recommended)**
+
+```bash
+# Run all 5 steps (incremental — only new files processed)
+python scripts/run_pipeline.py
+
+# Force re-process everything from scratch
+python scripts/run_pipeline.py --force
+
+# Run only audio steps (1–4)
+python scripts/run_pipeline.py --audio-only
+
+# Resume from step 3 onwards
+python scripts/run_pipeline.py --from-step 3
+
+# Use a specific Albanian ASR model for Step 4
+python scripts/run_pipeline.py --model ard-ali/whisper-medium-albanian
+```
+
+**Option B — individual steps**
 
 Run each step in order from the **project root**:
 
@@ -178,6 +206,75 @@ Text manifest columns: `text_id`, `source_path`, `raw_text_path`, `clean_text_pa
 
 Skip logic: source is skipped if `clean_text/<stem>.txt` already exists.
 
+### Step 6 — `export_dataset.py`
+
+Reads the manifests and exports training-ready JSONL files to `exports/`:
+
+```bash
+# Export all approved + pending records (default)
+python scripts/export_dataset.py
+
+# Export only human-reviewed approved records
+python scripts/export_dataset.py --status approved
+
+# Export with train/validation split (90/10)
+python scripts/export_dataset.py --split
+
+# Custom output directory
+python scripts/export_dataset.py --out-dir /path/to/output
+```
+
+Output files:
+
+| File | Content |
+|------|---------|
+| `exports/asr_dataset.jsonl` | Audio-text pairs (ASR training) |
+| `exports/text_dataset.jsonl` | Text chunks (language modelling) |
+| `exports/asr_train.jsonl` + `exports/asr_validation.jsonl` | Split variant |
+| `exports/text_train.jsonl` + `exports/text_validation.jsonl` | Split variant |
+
+ASR record schema:
+```json
+{
+  "id": "<pair_id>",
+  "audio_path": "<relative path to segment WAV>",
+  "transcript": "<final or raw transcript>",
+  "duration_sec": 4.2,
+  "model_name": "primusAI/whisper-large-v3-albanian",
+  "review_status": "approved"
+}
+```
+
+Text record schema:
+```json
+{
+  "id": "<text_id>",
+  "text": "<chunk text>",
+  "source_path": "<relative path to source>",
+  "chunk_chars": 320,
+  "review_status": "pending"
+}
+```
+
+---
+
+## Running Tests
+
+Unit tests cover the pure logic of `utils.py`, `build_text_dataset.py`, and `segment_audio.py` — no external tools required.
+
+```bash
+# Install test dependency (pytest)
+pip install pytest
+
+# Run all tests
+python -m pytest tests/ -v
+```
+
+Tests are organised by module:
+- `tests/test_utils.py` — `stable_id`, `load_manifest`, `upsert_manifest`
+- `tests/test_text_processing.py` — `clean_text`, `chunk_text`, `content_hash`
+- `tests/test_segment_logic.py` — `merge_segments`, `split_long_segments`
+
 ---
 
 ## Configuration
@@ -205,6 +302,14 @@ text:
   min_chunk_chars: 200
   max_chunk_chars: 2000
   dedup_by_hash: true
+
+export:
+  out_dir: exports
+  include_statuses: ["approved", "pending"]
+  min_duration_sec: 1.0
+  max_duration_sec: 30.0
+  split: false
+  split_ratio: 0.9
 ```
 
 ---

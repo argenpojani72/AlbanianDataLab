@@ -30,3 +30,6 @@ beautifulsoup4>=4.12
 
 # For optional Jupyter notebook exploration
 jupyter>=1.0
+
+# Testing
+pytest>=7.0

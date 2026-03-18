@@ -60,7 +60,6 @@ raw_text/*
 clean_text/*
 !clean_text/.gitkeep
 
-# Manifests and review outputs can be tracked (they are text/CSV)
-# Remove the next two lines if you do NOT want to track them:
-# manifests/
-# review/
+# Exported training JSONL files (can be large — generate locally with export_dataset.py)
+exports/
+

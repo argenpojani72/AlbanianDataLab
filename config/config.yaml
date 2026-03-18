@@ -50,3 +50,18 @@ text:
   dedup_by_hash: true         # skip chunks with duplicate content hash
   # file extensions recognised as text sources
   text_extensions: [".txt", ".html", ".htm", ".json", ".csv", ".pdf", ".epub"]
+
+export:
+  # Directory where export_dataset.py writes JSONL files (relative to project root)
+  out_dir: exports
+  # review_status values to include in exports (approved | pending | all)
+  include_statuses: ["approved", "pending"]
+  # Minimum audio segment duration in seconds (shorter segments are excluded)
+  min_duration_sec: 1.0
+  # Maximum audio segment duration in seconds (longer segments are excluded)
+  max_duration_sec: 30.0
+  # Minimum characters per text chunk
+  min_chunk_chars: 50
+  # Whether to produce train/validation splits (90 % / 10 %)
+  split: false
+  split_ratio: 0.9

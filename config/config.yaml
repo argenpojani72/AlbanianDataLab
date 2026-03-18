@@ -1,0 +1,43 @@
+# AlbanianDataFactory Configuration
+# Adjust these values to tune the pipeline for your environment and data.
+
+paths:
+  raw_sources_audio_video: raw_sources/audio_video
+  raw_sources_text: raw_sources/text
+  raw_audio: raw_audio
+  clean_audio: clean_audio
+  audio_segments: audio_segments
+  raw_text: raw_text
+  clean_text: clean_text
+  manifests: manifests
+  review_audio: review/audio
+  review_text: review/text
+  logs: logs
+
+audio:
+  sample_rate: 16000          # Hz — mono 16 kHz WAV standard for ASR
+  channels: 1                 # mono
+  # ffmpeg audio-cleaning filter chain applied in clean_audio.py
+  # highpass removes sub-80 Hz rumble, lowpass removes above 8 kHz hiss,
+  # afftdn removes broadband noise, loudnorm brings loudness to -16 LUFS.
+  clean_filter: "highpass=f=80,lowpass=f=8000,afftdn=nf=-25,loudnorm=I=-16:LRA=11:TP=-1.5"
+
+segmentation:
+  min_duration_sec: 3.0       # discard segments shorter than this
+  max_duration_sec: 20.0      # split segments longer than this
+  merge_gap_sec: 0.3          # merge consecutive speech regions closer than this
+  vad_threshold: 0.5          # Silero VAD speech probability threshold (0–1)
+  vad_window_size_samples: 512
+
+transcription:
+  model_name: "openai/whisper-base"   # HuggingFace model id or "openai/whisper-*"
+  language: "sq"                       # Albanian ISO 639-1 code
+  device: "cpu"                        # "cpu" or "cuda"
+  batch_size: 1
+
+text:
+  min_chunk_chars: 200        # minimum characters per text chunk to keep
+  max_chunk_chars: 2000       # soft upper limit for chunk size (split at sentence boundary)
+  dedup_by_hash: true         # skip chunks with duplicate content hash
+  # file extensions recognised as text sources
+  text_extensions: [".txt", ".html", ".htm", ".json", ".csv", ".pdf", ".epub"]

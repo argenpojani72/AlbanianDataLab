@@ -40,11 +40,18 @@ AlbanianDataFactory/
 │   ├── segment_audio.py          ← Step 3: clean WAV → speech chunks (Silero VAD)
 │   ├── transcribe_segments.py    ← Step 4: chunks → transcripts (Albanian fine-tuned ASR)
 │   ├── build_text_dataset.py     ← Step 5: text → chunks → manifest
-│   └── export_dataset.py         ← Step 6: manifests → training-ready JSONL
+│   ├── export_dataset.py         ← Step 6: manifests → training-ready JSONL
+│   ├── review_manifest.py        ← human-review CLI (update review_status / notes)
+│   └── stats.py                  ← dataset statistics report
 ├── tests/
+│   ├── conftest.py               ← shared pytest fixtures
 │   ├── test_utils.py             ← unit tests for utils.py
 │   ├── test_text_processing.py   ← unit tests for text clean/chunk logic
-│   └── test_segment_logic.py     ← unit tests for VAD merge/split logic
+│   ├── test_segment_logic.py     ← unit tests for VAD merge/split logic
+│   ├── test_export_dataset.py    ← unit tests for export logic
+│   └── test_run_pipeline.py      ← unit tests for pipeline step selection
+├── .github/
+│   └── workflows/ci.yml          ← GitHub Actions CI (runs tests on every push/PR)
 ├── exports/                      ← JSONL training files (export_dataset.py output)
 └── notebooks/                    ← exploratory notebooks
 ```
@@ -318,6 +325,32 @@ export:
 
 Human review works directly on the manifests and review notes — it never overwrites raw or processed files.
 
+### Option A — CLI tool (recommended)
+
+Use `review_manifest.py` to update statuses without editing CSVs by hand:
+
+```bash
+# See a summary of review coverage across all manifests
+python scripts/review_manifest.py summary
+
+# List all pending audio pairs
+python scripts/review_manifest.py list --manifest audio --filter-status pending
+
+# Approve all pending audio pairs in bulk
+python scripts/review_manifest.py set-status \
+    --manifest audio --status approved --filter-status pending
+
+# Reject specific pairs by ID
+python scripts/review_manifest.py set-status \
+    --manifest audio --status reject --ids pid1 pid7 --notes "non_albanian"
+
+# Append a note to a text chunk
+python scripts/review_manifest.py set-notes \
+    --manifest text --notes "encoding_issue" --ids tid12 --append
+```
+
+### Option B — Direct CSV editing
+
 ### Audio pairs review (`manifests/audio_text_pairs.csv`)
 
 - Listen to each segment in `audio_segments/`.
@@ -337,6 +370,58 @@ Human review works directly on the manifests and review notes — it never overw
 **Audio tags:** `noise` `music` `overlap` `bad_cut` `unclear_speech` `non_albanian` `too_short` `too_long` `distortion`
 
 **Text tags:** `duplicate` `junk` `html_noise` `encoding_issue` `non_albanian` `too_short` `bad_extraction` `ocr_noise`
+
+---
+
+## Dataset Statistics
+
+Print a quick summary of how much data has been collected and reviewed:
+
+```bash
+# Text table (human-readable)
+python scripts/stats.py
+
+# JSON (machine-readable)
+python scripts/stats.py --json
+
+# Write to a file
+python scripts/stats.py --out reports/stats.txt
+```
+
+Example output:
+```
+════════════════════════════════════════════════════════
+  AlbanianDataFactory — Dataset Statistics
+  Generated: 2024-01-15T12:00:00+00:00
+════════════════════════════════════════════════════════
+
+── Audio Sources ──────────────────────────────────────
+  Total media files processed:  47
+  With clean audio:             47
+
+── Audio Segments ─────────────────────────────────────
+  Total segments:               3 218
+  Total duration:               8.92 h  (535.1 min)
+
+── ASR Transcription Pairs ────────────────────────────
+  Total pairs:                  3 218
+  Transcribed:                  3 215
+  Transcription errors:         3
+  Review status breakdown:
+    approved      1 200  (37.3%)
+    pending       2 015  (62.6%)
+    reject            3  (0.1%)
+
+── Text Chunks ─────────────────────────────────────────
+  Total chunks:                 8 542
+  Total characters:         1 923 400
+  Approx. words:              384 680
+  Unique source files:             23
+  Review status breakdown:
+    approved      5 100  (59.7%)
+    pending       3 440  (40.3%)
+════════════════════════════════════════════════════════
+```
 
 ---
 

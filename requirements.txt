@@ -1,0 +1,35 @@
+# AlbanianDataFactory — Python dependencies
+# Install with: pip install -r requirements.txt
+# Note: ffmpeg must be installed separately and available on PATH.
+
+# Core data handling
+pandas>=2.0
+pyyaml>=6.0
+
+# Audio I/O and processing (used by segment_audio.py)
+torch>=2.0
+torchaudio>=2.0
+
+# Silero VAD (loaded via torch.hub — no extra pip package needed)
+# But we need a version of torch that supports hub
+
+# Hugging Face Transformers — sole ASR backend for Albanian fine-tuned models
+# (transcribe_segments.py uses the transformers pipeline exclusively)
+transformers>=4.35
+accelerate>=0.24
+
+# Text extraction (optional but recommended)
+# HTML extraction
+trafilatura>=1.6
+# PDF text extraction
+pdfminer.six>=20221105
+pypdf>=3.0
+# EPUB extraction
+ebooklib>=0.18
+beautifulsoup4>=4.12
+
+# For optional Jupyter notebook exploration
+jupyter>=1.0
+
+# Testing
+pytest>=7.0

@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# PyTorch / ML model caches
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.onnx
+
+# Torch Hub cache (downloaded models)
+torch_hub_cache/
+
+# HuggingFace cache
+.cache/
+
+# Logs (keep the folder, ignore log files)
+logs/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Large data files that should not be tracked in git
+raw_sources/audio_video/*
+!raw_sources/audio_video/.gitkeep
+raw_sources/text/*
+!raw_sources/text/.gitkeep
+raw_audio/*
+!raw_audio/.gitkeep
+clean_audio/*
+!clean_audio/.gitkeep
+audio_segments/*
+!audio_segments/.gitkeep
+raw_text/*
+!raw_text/.gitkeep
+clean_text/*
+!clean_text/.gitkeep
+
+# Exported training JSONL files (can be large — generate locally with export_dataset.py)
+exports/
+
